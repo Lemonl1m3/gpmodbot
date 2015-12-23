@@ -2,16 +2,6 @@ from gmusicapi import Mobileclient
 import urllib2 # url decoding
 import operator # max function
 
-public class Player{
-	String name;
-	public Player(){
-		//constructor
-	}
-	public Player(String n){
-		this.name = n;
-	}
-}
-
 class Player:
 	def __init__(self,creds,logging=False,val=False,ssl=True):
 		# verify that creds is a dict or raise TypeError
