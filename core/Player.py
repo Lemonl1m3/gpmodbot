@@ -1,5 +1,16 @@
 from gmusicapi import Mobileclient
 import urllib2 # url decoding
+import operator # max function
+
+public class Player{
+	String name;
+	public Player(){
+		//constructor
+	}
+	public Player(String n){
+		this.name = n;
+	}
+}
 
 class Player:
 	def __init__(self,creds,logging=False,val=False,ssl=True):
@@ -16,15 +27,27 @@ class Player:
 		self.password = creds["pass"]
 		self.mac = creds["mac"]
 		self.mc = Mobileclient(debug_logging=logging,validate=val,verify_ssl=ssl)
-		
+
 		# verify Mobileclient logged in or raise ConnectionError
 		if not self.mc.login(self.email,self.password,self.mac):
-			raise ConnectionError('Could not connect using those credentials')
+			raise ConnectionError('Could not connect using those credentials'
+)
+		self.qd = { #query dictionary
+			"song":["song_hits","nid"],
+			"artist":["artist_hits","artistId"],
+			"album":["album_hits","albumId"],
+			}
+		self.sd = { #search dictionary
+			"song_hits":"nid",
+			"artist_hits":"artistId",
+			"album_hits":"albumId",
+			"track","trackId"
+			}
 
 	# search all playlists
 	# if id is share_token, return list of songs in shared playlist
 	# else if id, return list of songs in that playlist
-	# else no id, and return get_playlists
+	# else no id, return get_playlists
 	def get_playlist(self,id=None):
 		if "http://play.google.com/music/playlist/" in id:
 			return self.mc.get_shared_playlist_contents(urllib2.unquote(id))
@@ -48,44 +71,75 @@ class Player:
 
 	# if query, search song and return mp3 file 
 	# if no query, Feeling Lucky mix
-	def get_song_by_query(self,query=None):
+	def get_by_query(self,query=None,max=20,type="song"):
 		if query:
-			self.mc.search_all_access(query,max_results=10)
+			qlist = self.mc.search_all_access(query,max_results=max)
+			hit_acc = {}
+		if type=="song" or type=="artist" or type=="album":
+			for entry in qlist[qd[type]] #song_hits/artist_hists/album_hits
+				if query in entry[sd[qd[type]]]: #artistId/albumId/nid
+					hit_acc[sd[qd[type]]]=entry[sd[qd[type]]]
+					hit_acc[sd[qd[type]]]=entry["score"]
+		if type=="artist":
+
+			# get artist hits
+		elif type=="album":
+
+		else:
+			raise TypeError('Given type "{}" is not applicable'
+				.format(type))
 
 		
 	# searches for song by id
 	# if id is None, raise Error
 	# else get_stream_url by id
 	def get_song_by_id(self,id=None):
-		return self.mc.get_stream_url(song_id=id)
+		if id:
+			song_url = self.mc.get_stream_url(song_id=id)
+			if !song_url:
+				raise Error('No song returned for that id')
+			else:
+				return song_url
+		else:
+			raise TypeError('Not a valid song id')
 
 
 	# create playlist and return id
-	def create_playlist(self,name):
-		
+	def create_playlist(self,name,desc=None,public=False):
+		return self.mc.create_playlist(name,desc,public)
+
 
 	# if id, add song id to playlist
-	# if query, add returned id of get_song_by_query(query)
+	# if query, add returned id of get_by_query(query)
 	# if no id/query, raise Error
-	def add_to_playlist(self,id=None,query=None):
+	def add_to_playlist(self,pid=None,id=None,query=None):
 		if query and id:
 			raise Error('Cannot search for id and query in same call')
 		elif query:
-			song = self.get_song_by_query(query)
+			song = self.get_by_query(query)
 		elif id:
 			song = self.get_song_by_id()
+		if song:
+			pids = self.mc.add_songs_to_playlist(pid,id)
+			return pids #playlist entry ids
+		else:
+			raise Error('Could not add song to playlist')
 
 
 	# this method should only be called if a song is playing 
 	# returns list of song ids changed
 	def rateSong(self,rating, id):
 		song = self.mc.get_track_info(id)
+		rating = rating.lower()
 		if rating is "up":
 			song['rating'] = '5'
 		elif rating is "down":
 			song['rating'] = '1'
+		elif rating is "clear":
+			song['rating'] = '0'
 		else
-			return
+			raise TypeError('Provided rating {} not valid: "clear"/"up"/"down"'
+				.format(rating))
 		return self.mc.change_song_metadata(song)
 
 	# logout of Mobileclient and return success boolean
